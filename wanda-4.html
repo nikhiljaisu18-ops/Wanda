@@ -26,15 +26,17 @@
     background: #000;
     color: var(--text);
     font-family: 'Rajdhani', sans-serif;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
   #app {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    min-height: 100vh;
     max-width: 720px;
     margin: 0 auto;
     position: relative;
+    padding-bottom: 66px; /* space for the fixed input bar below */
   }
 
   /* ---------- Top bar ---------- */
@@ -269,13 +271,18 @@
 
   /* ---------- Input bar ---------- */
   #inputBar {
-    flex-shrink: 0;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    max-width: 720px;
+    margin: 0 auto;
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
-    background: rgba(10,3,3,0.9);
+    background: rgba(10,3,3,0.96);
+    backdrop-filter: blur(6px);
+    z-index: 100;
   }
   #textInput {
     flex: 1;
