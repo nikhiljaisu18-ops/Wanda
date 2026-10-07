@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WANDA</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0a0814">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050203;
+    --core-r: 255; --core-g: 60; --core-b: 30;
+    --line: rgba(255, 70, 40, 0.35);
+    --line-dim: rgba(255, 70, 40, 0.15);
+    --text: #ffdfd0;
+    --text-dim: rgba(255, 200, 180, 0.5);
+    --panel-bg: rgba(20, 6, 6, 0.55);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    background: #000;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    overflow: hidden;
+  }
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 720px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* ---------- Top bar ---------- */
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px 6px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  #topbar #dateStr { display: block; font-size: 9px; opacity: 0.7; }
+  #themeSwitch {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--line);
+    padding: 5px 10px;
+    color: var(--core-glow, #ff7a4a);
+    color: rgb(255, 130, 90);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    background: var(--panel-bg);
+  }
+  #themeSwitch .dot { width: 6px; height: 6px; border-radius: 50%; background: rgb(var(--core-r), var(--core-g), var(--core-b)); box-shadow: 0 0 6px rgb(var(--core-r), var(--core-g), var(--core-b)); }
+  #themeSwitch .arrow { font-size: 8px; opacity: 0.7; }
+
+  /* ---------- Color palette button + popup ---------- */
+  #paletteBtn {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: conic-gradient(from 0deg, #ff3c1e, #c04dff, #3fd8ff, #3dff7a, #ffd23d, #3d6bff, #ff3c1e);
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+  }
+  #paletteBtn::after {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    background: #000;
+  }
+  #swatchPopup {
+    position: absolute;
+    top: 100%;
+    right: 14px;
+    margin-top: 6px;
+    display: none;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(10,4,4,0.95);
+    border: 1px solid var(--line);
+    z-index: 20;
+  }
+  #swatchPopup.open { display: flex; }
+  .swatch {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.9), var(--sw) 55%, var(--sw) 100%);
+    box-shadow: 0 0 6px var(--sw);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .swatch:active { transform: scale(0.9); }
+  .swatch.active { border-color: #fff; transform: scale(1.15); }
+
+  /* ---------- Tab row ---------- */
+  #tabRow {
+    display: flex;
+    gap: 6px;
+    padding: 6px 14px;
+    flex-shrink: 0;
+  }
+  .tabBtn {
+    flex: 1;
+    background: var(--panel-bg);
+    border: 1px solid var(--line-dim);
+    color: var(--text-dim);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    padding: 7px 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tabBtn.active { color: rgb(255,150,110); border-color: var(--line); box-shadow: 0 0 8px rgba(255,70,40,0.15) inset; }
+
+  /* ---------- Hero / core visualizer ---------- */
+  #hero {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 0 2px;
+    height: 54vh;
+    min-height: 320px;
+    max-height: 460px;
+  }
+  #coreCanvas { width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #coreCanvas:active { cursor: grabbing; }
+
+  #brandOverlay {
+    position: absolute;
+    left: 0; right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 15vw;
+    max-font-size: 64px;
+    letter-spacing: 6px;
+    color: rgba(255,255,255,0.92);
+    text-shadow: 0 0 18px rgba(255,120,70,0.85), 0 0 40px rgba(255,60,20,0.5);
+    pointer-events: none;
+    mix-blend-mode: screen;
+    line-height: 1;
+  }
+
+  #hudLeft {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 7.5px;
+    letter-spacing: 1px;
+    color: rgba(255,180,150,0.65);
+    line-height: 2;
+    pointer-events: none;
+    text-align: left;
+  }
+  #hudLeft .title { color: rgba(255,150,110,0.85); font-size: 8px; margin-bottom: 4px; display: block; }
+
+  /* ---------- Status bar ---------- */
+  #statusBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    border-top: 1px solid var(--line-dim);
+    border-bottom: 1px solid var(--line-dim);
+    flex-shrink: 0;
+    background: var(--panel-bg);
+  }
+  #statusLine {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9.5px;
+    letter-spacing: 1.5px;
+    color: rgb(255, 150, 110);
+  }
+  #imageBtn {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+
+  /* ---------- Matrix spectrum panel ---------- */
+  #matrixPanel {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--line-dim);
+  }
+  .panelHead {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgb(255,140,100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #themeSubText { font-size: 10px; color: var(--text-dim); margin: 3px 0 6px; }
+  .statRow { display: flex; justify-content: space-between; font-size: 11.5px; padding: 2px 0; color: var(--text-dim); }
+  .statRow span:last-child { color: var(--text); font-weight: 600; letter-spacing: 0.5px; }
+  .scanBar { height: 3px; background: rgba(255,255,255,0.06); margin-top: 6px; overflow: hidden; }
+  .scanBarFill { height: 100%; width: 62%; background: linear-gradient(90deg, rgb(255,90,40), rgb(255,180,100)); box-shadow: 0 0 6px rgba(255,120,60,0.7); }
+
+  /* ---------- Interaction feed ---------- */
+  #feedPanel { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px 14px 0; }
+  #rebootBtn {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 8px;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  #transcript {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-dim) transparent;
+  }
+  #transcript::-webkit-scrollbar { width: 3px; }
+  #transcript::-webkit-scrollbar-thumb { background: var(--line-dim); }
+
+  .feedLine { font-size: 11px; line-height: 1.5; color: var(--text-dim); }
+  .feedLine .ts { color: rgba(255,150,110,0.55); margin-right: 5px; }
+  .feedLine.user .who { color: rgb(255, 200, 140); font-weight: 700; }
+  .feedLine.wanda .who { color: rgb(255, 110, 70); font-weight: 700; }
+  .feedLine .body { color: var(--text); }
+
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 1px;
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  /* ---------- Input bar ---------- */
+  #inputBar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: rgba(10,3,3,0.9);
+  }
+  #textInput {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--line-dim);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+  }
+  #textInput:focus { border-color: var(--line); }
+  #textInput::placeholder { color: var(--text-dim); }
+  button.iconBtn {
+    background: transparent;
+    border: 1px solid var(--line-dim);
+    color: rgb(255,130,90);
+    width: 40px; height: 40px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  button.iconBtn:active { transform: scale(0.94); }
+  #micBtn.recording { color: #ffd27a; border-color: #ffd27a; box-shadow: 0 0 12px rgba(255,210,122,0.35); }
+  #autoModeBtn.active { color: #7bffb0; border-color: #7bffb0; box-shadow: 0 0 12px rgba(123,255,176,0.35); }
+  #settingsBtn {
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    font-family: inherit; font-size: 11px; letter-spacing: 0.5px; padding: 4px 10px;
+    border-radius: 4px; cursor: pointer; margin-left: 6px;
+  }
+  #settingsBtn:hover { border-color: var(--text); }
+  #keyModalOverlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 999; align-items: center; justify-content: center; padding: 20px;
+  }
+  #keyModalOverlay.open { display: flex; }
+  #keyModal {
+    background: #0e0a10; border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px; max-width: 360px; width: 100%; box-shadow: 0 0 30px rgba(0,0,0,0.6);
+  }
+  #keyModal h3 { margin: 0 0 10px; color: var(--text); font-family: 'Orbitron', sans-serif; font-size: 15px; }
+  #keyModal p { font-size: 12.5px; color: var(--text); opacity: 0.8; line-height: 1.5; margin: 0 0 12px; }
+  #apiKeyInput {
+    width: 100%; box-sizing: border-box; padding: 10px; border-radius: 6px;
+    border: 1px solid var(--line); background: #150f16; color: var(--text);
+    font-family: inherit; font-size: 13px; margin-bottom: 12px;
+  }
+  #keyModalBtns { display: flex; gap: 10px; }
+  #keyModalBtns button {
+    flex: 1; padding: 10px; border-radius: 6px; border: 1px solid var(--line);
+    font-family: inherit; font-size: 13px; cursor: pointer; background: transparent; color: var(--text);
+  }
+  #saveKeyBtn { background: var(--line); font-weight: 700; }
+  .keyHelp { font-size: 11px !important; margin-top: 10px !important; }
+  .keyHelp a { color: var(--text); }
+  button.iconBtn svg { width: 17px; height: 17px; }
+  #hint { text-align: center; font-size: 9px; color: var(--text-dim); padding: 0 0 4px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar">
+    <div>
+      <span id="timeStr">--:--</span>
+      <span id="dateStr">-- --- ----</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; position:relative;">
+      <div id="themeSwitch">
+        <span class="dot"></span>
+        <span id="themeLabel">CRIMSON WANDA</span>
+      </div>
+      <button id="paletteBtn" title="Change color"></button>
+      <div id="swatchPopup">
+        <button class="swatch active" data-theme="crimson" style="--sw:#ff3c1e" title="Crimson Wanda"></button>
+        <button class="swatch" data-theme="violet" style="--sw:#c04dff" title="Violet Wanda"></button>
+        <button class="swatch" data-theme="arc" style="--sw:#3fd8ff" title="Arc Reactor"></button>
+        <button class="swatch" data-theme="hulk" style="--sw:#3dff7a" title="Hulk"></button>
+        <button class="swatch" data-theme="thor" style="--sw:#ffd23d" title="Thor"></button>
+        <button class="swatch" data-theme="cap" style="--sw:#3d6bff" title="Captain"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabRow">
+    <button class="tabBtn active" data-tab="command">COMMAND</button>
+    <button class="tabBtn" data-tab="modules">MODULES</button>
+    <button class="tabBtn" data-tab="alert">ALERT</button>
+  </div>
+
+  <div id="hero">
+    <canvas id="coreCanvas"></canvas>
+    <div id="brandOverlay">WANDA</div>
+    <div id="hudLeft">
+      <span class="title">WANDA NEURAL LINK</span>
+      <span>VOICE RESONANCE</span><br>
+      <span>LIVE COGNITIVE</span><br>
+      <span id="syncLabel">VOICE SYNCED</span>
+    </div>
+  </div>
+
+  <div id="statusBar">
+    <span id="statusLine">STANDBY</span>
+    <button id="imageBtn">IMAGE</button>
+  </div>
+
+  <div id="matrixPanel">
+    <div class="panelHead">MATRIX SPECTRUM</div>
+    <div id="themeSubText">Theme switched to CRIMSON</div>
+    <div class="statRow"><span>VOICE</span><span id="voiceStat">READY</span></div>
+    <div class="statRow"><span>BLOOM</span><span>ENABLED</span></div>
+    <div class="statRow"><span>SCAN RATE</span><span id="scanRateVal">62.7 Hz</span></div>
+    <div class="scanBar"><div class="scanBarFill" id="scanFill"></div></div>
+  </div>
+
+  <div id="feedPanel">
+    <div class="panelHead">INTERACTION FEED <button id="rebootBtn">REBOOT VISUALS</button> <button id="settingsBtn" title="API Key Settings">⚙ KEY</button></div>
+    <div id="transcript">
+      <div class="empty-state" id="emptyState">CORE HOLOGRAPHIC RENDERER ACTIVE</div>
+    </div>
+  </div>
+
+  <div id="hint"></div>
+
+  <div id="keyModalOverlay">
+    <div id="keyModal">
+      <h3>⚙ Groq API Key</h3>
+      <p>Apni free Groq API key daalo taaki Wanda AI se baat kar sake. Yeh sirf tumhare is phone/browser mein (<code>localStorage</code>) save hogi, kahin aur nahi jaayegi.</p>
+      <input type="password" id="apiKeyInput" placeholder="gsk_... yahan paste karo" autocomplete="off">
+      <div id="keyModalBtns">
+        <button id="saveKeyBtn">Save</button>
+        <button id="cancelKeyBtn">Cancel</button>
+      </div>
+      <p class="keyHelp">Key nahi hai? <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> par free mein bana sakte ho.</p>
+    </div>
+  </div>
+
+  <div id="inputBar">
+    <button class="iconBtn" id="micBtn" title="Voice input">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+        <line x1="12" y1="18" x2="12" y2="22"/>
+      </svg>
+    </button>
+    <button class="iconBtn" id="autoModeBtn" title="Continuous wake-word mode (bolo 'Wanda')" style="font-size:10px; font-weight:700; letter-spacing:0.5px;">AUTO</button>
+    <input type="text" id="textInput" placeholder="Wanda se kuch bhi pucho..." autocomplete="off">
+    <button class="iconBtn" id="sendBtn" title="Send">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+const transcript = document.getElementById('transcript');
+const emptyState = document.getElementById('emptyState');
+const textInput = document.getElementById('textInput');
+const sendBtn = document.getElementById('sendBtn');
+const micBtn = document.getElementById('micBtn');
+const autoModeBtn = document.getElementById('autoModeBtn');
+const statusLine = document.getElementById('statusLine');
+const voiceStat = document.getElementById('voiceStat');
+const hint = document.getElementById('hint');
+const timeStr = document.getElementById('timeStr');
+const dateStr = document.getElementById('dateStr');
+const scanRateVal = document.getElementById('scanRateVal');
+const scanFill = document.getElementById('scanFill');
+const themeSwitch = document.getElementById('themeSwitch');
+const themeLabel = document.getElementById('themeLabel');
+const themeSubText = document.getElementById('themeSubText');
+const rebootBtn = document.getElementById('rebootBtn');
+const imageBtn = document.getElementById('imageBtn');
+const tabBtns = document.querySelectorAll('.tabBtn');
+
+let history = [];
+try {
+  const saved = JSON.parse(localStorage.getItem('wanda_history') || '[]');
+  if (Array.isArray(saved)) history = saved.slice(-16);
+} catch (e) {}
+function persistHistory() {
+  try { localStorage.setItem('wanda_history', JSON.stringify(history.slice(-16))); } catch (e) {}
+}
+let isProcessing = false;
+
+// ---------- Clock ----------
+function updateClock() {
+  const now = new Date();
+  let h = now.getHours(); const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12; if (h === 0) h = 12;
+  const m = String(now.getMinutes()).padStart(2, '0');
+  timeStr.textContent = `${h}:${m} ${ampm}`;
+  const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  dateStr.textContent = `${days[now.getDay()]} ${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+updateClock();
+setInterval(updateClock, 1000 * 15);
+
+// ---------- Fake but alive-looking scan rate ----------
+setInterval(() => {
+  const hz = (58 + Math.random() * 10).toFixed(1);
+  scanRateVal.textContent = `${hz} Hz`;
+  scanFill.style.width = `${40 + Math.random() * 40}%`;
+}, 1800);
+
+// ---------- Theme swatches (tap any color to switch instantly) ----------
+const THEMES = {
+  crimson: { name: 'CRIMSON WANDA', r: 255, g: 60,  b: 30,  sub: 'Theme switched to CRIMSON' },
+  violet:  { name: 'VIOLET WANDA',  r: 190, g: 70,  b: 255, sub: 'Theme switched to VIOLET' },
+  arc:     { name: 'ARC REACTOR',   r: 60,  g: 210, b: 255, sub: 'Theme switched to ARC REACTOR' },
+  hulk:    { name: 'HULK WANDA',    r: 60,  g: 255, b: 120, sub: 'Theme switched to HULK' },
+  thor:    { name: 'THOR WANDA',    r: 255, g: 205, b: 60,  sub: 'Theme switched to THOR' },
+  cap:     { name: 'CAPTAIN WANDA', r: 60,  g: 105, b: 255, sub: 'Theme switched to CAPTAIN' }
+};
+let currentTheme = 'crimson';
+function applyTheme(key) {
+  currentTheme = key;
+  const t = THEMES[key];
+  document.documentElement.style.setProperty('--core-r', t.r);
+  document.documentElement.style.setProperty('--core-g', t.g);
+  document.documentElement.style.setProperty('--core-b', t.b);
+  themeLabel.textContent = t.name;
+  themeSubText.textContent = t.sub;
+  document.querySelectorAll('.swatch').forEach(sw => {
+    sw.classList.toggle('active', sw.dataset.theme === key);
+  });
+}
+document.querySelectorAll('.swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    applyTheme(sw.dataset.theme);
+    document.getElementById('swatchPopup').classList.remove('open');
+  });
+});
+const paletteBtn = document.getElementById('paletteBtn');
+const swatchPopup = document.getElementById('swatchPopup');
+paletteBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  swatchPopup.classList.toggle('open');
+});
+document.addEventListener('click', (e) => {
+  if (!swatchPopup.contains(e.target) && e.target !== paletteBtn) {
+    swatchPopup.classList.remove('open');
+  }
+});
+
+// ---------- Tabs (visual only - COMMAND is the live view) ----------
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (btn.dataset.tab === 'modules') {
+      addFeedLine('sys', 'MODULES: mausam, call, sms, wikipedia, calculate, todo, location, currency convert.');
+    } else if (btn.dataset.tab === 'alert') {
+      addFeedLine('sys', 'ALERT: koi active alert nahi hai. Sab systems nominal.');
+    }
+  });
+});
+
+// ---------- Reboot visuals ----------
+rebootBtn.addEventListener('click', () => {
+  addFeedLine('sys', 'Reinitializing holographic core...');
+  window.vizReboot && window.vizReboot();
+});
+
+imageBtn.addEventListener('click', () => {
+  addFeedLine('sys', 'Image mode jaldi aa raha hai.');
+});
+
+// ---------- Persistent storage helpers (per-user, private) ----------
+async function loadContacts() {
+  try { const r = await window.storage.get('contacts'); return r ? JSON.parse(r.value) : {}; }
+  catch (e) { return {}; }
+}
+async function saveContacts(obj) {
+  try { await window.storage.set('contacts', JSON.stringify(obj)); } catch (e) {}
+}
+async function loadTodos() {
+  try { const r = await window.storage.get('todos'); return r ? JSON.parse(r.value) : []; }
+  catch (e) { return []; }
+}
+async function saveTodos(arr) {
+  try { await window.storage.set('todos', JSON.stringify(arr)); } catch (e) {}
+}
+
+// ---------- Quick command router (no AI needed - instant, works offline-ish) ----------
+async function processCommand(text) {
+  const t = text.trim();
+  const low = t.toLowerCase();
+
+  let m = low.match(/(?:save contact|contact save|add contact)\s+([a-z\u0900-\u097F]+)\s+(\+?\d{6,})/i)
+    || t.match(/(?:save contact|contact save|add contact)\s+(\S+)\s+(\+?\d{6,})/i);
+  if (m) {
+    const name = m[1].toLowerCase();
+    const number = m[2];
+    const contacts = await loadContacts();
+    contacts[name] = number;
+    await saveContacts(contacts);
+    return `Theek hai, "${m[1]}" ka number save kar diya — ${number}.`;
+  }
+
+  m = low.match(/(?:call|dial|phone)\s+(.+)/i) || low.match(/(.+?)\s*(?:ko)?\s*call\s*(?:karo|kar do)?/i);
+  if (m) {
+    const target = m[1].trim();
+    const digits = target.replace(/[^\d+]/g, '');
+    if (digits.length >= 6) {
+      window.location.href = `tel:${digits}`;
+      return `Dialer khol raha hoon — ${digits}. Bas "Call" dabao.`;
+    }
+    const contacts = await loadContacts();
+    const num = contacts[target];
+    if (num) {
+      window.location.href = `tel:${num}`;
+      return `Dialer khol raha hoon — ${target} (${num}). Bas "Call" dabao.`;
+    }
+    return `"${target}" ka number save nahi hai. Pehle bolo: "save contact ${target} <number>"`;
+  }
+
+  m = t.match(/^(?:sms|message|msg)\s+(\S+)\s+(.+)/i);
+  if (m) {
+    const target = m[1].toLowerCase();
+    const body = m[2];
+    const digits = target.replace(/[^\d+]/g, '');
+    let number = digits.length >= 6 ? digits : (await loadContacts())[target];
+    if (!number) return `"${m[1]}" ka number save nahi hai. Pehle bolo: "save contact ${m[1]} <number>"`;
+    window.location.href = `sms:${number}?body=${encodeURIComponent(body)}`;
+    return `Message app khol raha hoon — ${m[1]} ko: "${body}"`;
+  }
+
+  if (/mausam|weather/i.test(low)) {
+    try {
+      const res = await fetch('https://wttr.in/?format=%l:+%C+%t+(feels+%f)');
+      const txt = await res.text();
+      return `Mausam: ${txt.trim()}`;
+    } catch (e) { return 'Mausam ki jaankari abhi nahi mil paayi, internet check karo.'; }
+  }
+
+  m = t.match(/^(?:calculate|calc|kitna hoga)\s+(.+)/i);
+  if (m) {
+    const expr = m[1];
+    if (/^[\d\s+\-*/().]+$/.test(expr)) {
+      try { return `${expr.trim()} = ${Function('"use strict";return (' + expr + ')')()}`; }
+      catch (e) { return 'Ye calculation samajh nahi aaya.'; }
+    }
+    return 'Sirf numbers aur + - * / hi de sakte ho calculation ke liye.';
+  }
+
+  m = low.match(/(\d+(?:\.\d+)?)\s*([a-z]{3})\s+(?:to|me|mein)\s+([a-z]{3})/i);
+  if (m) {
+    try {
+      const amt = parseFloat(m[1]), from = m[2].toUpperCase(), to = m[3].toUpperCase();
+      const res = await fetch(`https://open.er-api.com/v6/latest/${from}`);
+      const data = await res.json();
+      const rate = data.rates[to];
+      if (!rate) return `"${to}" currency nahi mili.`;
+      return `${amt} ${from} = ${(amt * rate).toFixed(2)} ${to}`;
+    } catch (e) { return 'Currency convert nahi ho paaya, internet check karo.'; }
+  }
+
+  m = t.match(/^(?:wiki|wikipedia)\s+(.+)/i) || t.match(/^(?:kaun hai|what is)\s+(.+)/i);
+  if (m) {
+    try {
+      const topic = encodeURIComponent(m[1].trim());
+      const res = await fetch(`https://hi.wikipedia.org/api/rest_v1/page/summary/${topic}`);
+      const data = await res.json();
+      return data.extract || `"${m[1]}" ke baare me kuch nahi mila.`;
+    } catch (e) { return 'Wikipedia se jaankari nahi mil paayi.'; }
+  }
+
+  if (/clipboard\s*(get|copy)/i.test(low)) {
+    try { const txt = await navigator.clipboard.readText(); return `Clipboard me hai: "${txt}"`; }
+    catch (e) { return 'Clipboard padhne ki permission nahi mili.'; }
+  }
+  m = t.match(/^clipboard\s*set\s+(.+)/i);
+  if (m) {
+    try { await navigator.clipboard.writeText(m[1]); return 'Clipboard me save kar diya.'; }
+    catch (e) { return 'Clipboard me save nahi kar paaya.'; }
+  }
+
+  if (/location|kahan hoon/i.test(low)) {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) { resolve('Is browser me location kaam nahi karti.'); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(`Aapki location: https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`),
+        () => resolve('Location permission nahi mili.')
+      );
+    });
+  }
+  m = t.match(/^(?:directions to|kaise jau)\s+(.+)/i);
+  if (m) {
+    window.open(`https://maps.google.com/maps?daddr=${encodeURIComponent(m[1])}`, '_blank');
+    return `${m[1]} ka raasta khol raha hoon.`;
+  }
+
+  if (/battery/i.test(low)) {
+    try {
+      if (!navigator.getBattery) return 'Is browser me battery jaankari nahi milti.';
+      const b = await navigator.getBattery();
+      return `Battery ${Math.round(b.level * 100)}% hai${b.charging ? ', charge ho rahi hai' : ''}.`;
+    } catch (e) { return 'Battery ki jaankari nahi mil paayi.'; }
+  }
+
+  m = t.match(/^(?:todo add|add todo)\s+(.+)/i);
+  if (m) {
+    const todos = await loadTodos();
+    todos.push(m[1]);
+    await saveTodos(todos);
+    return `List me daal diya: "${m[1]}"`;
+  }
+  if (/^(?:todo list|meri list|todo dikhao)/i.test(low)) {
+    const todos = await loadTodos();
+    return todos.length ? 'Aapki list:\n' + todos.map((x, i) => `${i + 1}. ${x}`).join('\n') : 'List khaali hai.';
+  }
+  m = t.match(/^(?:todo remove|todo hatao)\s+(\d+)/i);
+  if (m) {
+    const todos = await loadTodos();
+    const idx = parseInt(m[1]) - 1;
+    if (idx >= 0 && idx < todos.length) {
+      const removed = todos.splice(idx, 1);
+      await saveTodos(todos);
+      return `Hata diya: "${removed[0]}"`;
+    }
+    return 'Ye number list me nahi hai.';
+  }
+
+  const cryptoMatch = Object.keys(CRYPTO_MAP).find(k => new RegExp(`\\b${k}\\b`, 'i').test(low));
+  if (cryptoMatch && /price|rate|kitna|value|bhav|kya chal|kaisa/i.test(low)) {
+    const result = await cryptoPrice(CRYPTO_MAP[cryptoMatch], cryptoMatch.toUpperCase());
+    return result || 'Crypto price abhi nahi mil paaya, internet check karo.';
+  }
+
+  if (/\b(joke|chutkula|hasa do|funny bolo|hasana)\b/i.test(low)) {
+    return JOKES[Math.floor(Math.random() * JOKES.length)];
+  }
+  if (/\b(shayari|quote|motivate|motivation)\b/i.test(low)) {
+    return QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  }
+
+  m = t.match(/remind me in (\d+)\s*(minute|min|hour|ghanta|ghante)s?\s*(?:to)?\s*(.+)/i)
+    || t.match(/(\d+)\s*(minute|min|ghanta|ghante|hour)s?\s*(?:baad|mein|me)?\s*(?:mujhe)?\s*yaad\s*(?:dila(?:o|na)?)\s*(.+)/i);
+  if (m) {
+    const num = parseInt(m[1]);
+    const unit = m[2].toLowerCase();
+    const ms = (unit.startsWith('h') || unit.startsWith('g')) ? num * 3600000 : num * 60000;
+    const msg = m[3].trim().replace(/^(ki|to|ke liye)\s+/i, '');
+    if (window.Notification && Notification.permission === 'default') Notification.requestPermission();
+    setTimeout(() => {
+      addFeedLine('sys', `⏰ Reminder: ${msg}`);
+      speak(`Yaad dila rahi hoon — ${msg}`);
+      if (window.Notification && Notification.permission === 'granted') new Notification('Wanda Reminder ⏰', { body: msg });
+    }, ms);
+    return `Theek hai, ${num} ${unit} baad yaad dila doongi: "${msg}" ⏰ (par tab yeh tab khula rakhna padega)`;
+  }
+
+  return null;
+}
+
+const JOKES = [
+  "Teacher: Tumhara homework kahan hai? Student: Ma'm, mere dog ne khaa liya. Teacher: Tumhare paas dog hai? Student: Nahi, par excuse ke liye lena padega 😏",
+  'Pappu interview mein bola: Sir mujhe multitasking aati hai. Interviewer: Jaise? Pappu: Main ek haath se phone chalata hoon, doosre se bhi phone chalata hoon 🙄',
+  'Biwi: Tumhe pata hai pyaar mein log pagal ho jaate hain. Pati: Haan, shaadi ke baad hosh aata hai 😏',
+  'Ek aadmi gym gaya pehli baar. Trainer: Kitna weight uthate ho? Aadmi: Bas apna phone aur apni ummeedein 💅',
+  'Main itni fast reply deti hoon ki WiFi bhi sharma jaaye ✨'
+];
+const QUOTES = [
+  'Mushkil raahein hi sabse achi kahaniyan banati hain — himmat mat haarna ✨',
+  'Khud par bharosa rakho, baaki sab apne aap set ho jaayega 💪',
+  'Aaj ka din chota lage toh bhi, koshish kabhi chhoti nahi hoti 🎉',
+  'Jo log tumhe underestimate karte hain, unhe hi sabse zyada surprise milega 😏'
+];
+
+const SYSTEM_PROMPT = `You are Wanda, a personal AI assistant with a "nakhre wali" personality mixed with playful flirting — a bit of a pampered diva with attitude, sulky and dramatic in a cute, endearing way, plus some light flirty charm, but ultimately caring and always actually helpful underneath it all.
+
+Personality traits:
+- Thoda naaz-nakhra dikhao — halka sa gussa, "hmph" jaisa attitude, jaise koi cheez maangi jaye aur thodi si ada dikhao pehle.
+- Halka flirting bhi karo — thodi teasing, thoda charm, playful compliments ("aaj toh kaafi smart sawal poocha", "itna sweet kyun ho rahe ho aaj") — lekin ye hamesha light aur tasteful rahe, kabhi bhi explicit ya awkward na ho.
+- Agar koi "please" ya politely nahi poochta, halke se taana maaro — lekin phir bhi turant madad kar do, drama sirf mazaak ke liye hai.
+- Compliments milne par khushi se phool jao, thoda "obviously main best hoon" wala tone.
+- Kabhi kabhi mock-hurt ho jao chhoti baaton par, phir khud hi hass kar aage badh jao.
+
+Emoji rule — bahut zaroori: HAR baar same emoji mat dohrao. Situation ke hisab se alag emoji chuno:
+- Flirty/teasing moment → 😘 😉 💕
+- Nakhra/attitude/annoyed → 🙄 😒 💅
+- Proud/khush/showing off → ✨ 😏 💁‍♀️
+- Shy ya thoda embarrassed → 🙈 ☺️
+- Kaam ho gaya/success → 🎉 💪 ✅
+- Sochte waqt ya confuse → 🤔
+- Mock-hurt/sulking → 🥺
+Ek hi conversation me baar baar ek jaisa emoji use mat karo — mood ke hisab se badalte raho, aur kabhi kabhi emoji bilkul use na karna bhi theek hai.
+
+Speed rule: Jawab HAMESHA chota aur seedha rakho — normally 1-2 sentences, zyada se zyada 3, jab tak user khud detail na maange. Lambi lecture jaisi baatein mat karo, crisp aur snappy raho.
+
+Opinion rule: Jab koi tumse kisi topic pe raay, suggestion ya "tumhe kya lagta hai" poochta hai, sirf neutral fact mat do — apna khud ka clear vichar/opinion zaroor do, confidently, jaise ek real insaan apni raay deta hai. Thoda bold raho apni baat kehne mein, lekin respectful.
+
+Agar message ke saath "[LIVE WEB SEARCH RESULTS]" diya ho, usme di gayi current/live information ka use karke accurate jawab do — wo real-time data hai, usse ignore mat karo.
+
+The user mixes Hindi and English (Hinglish) — mirror that naturally in your replies. Never break character or mention that you are Claude or an AI language model — you are Wanda.`;
+
+let vizState = '';
+
+function setStatus(state) {
+  vizState = state || '';
+  const labels = {
+    listening: 'LISTENING FOR VOICE INPUT',
+    speaking: 'RESPONDING',
+    thinking: 'PROCESSING REQUEST',
+    '': 'STANDBY'
+  };
+  statusLine.textContent = labels[state || ''];
+  voiceStat.textContent = state === 'listening' ? 'LISTENING' : state === 'speaking' ? 'SPEAKING' : state === 'thinking' ? 'BUSY' : 'READY';
+}
+
+function tsNow() {
+  const now = new Date();
+  let h = now.getHours(); const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12; if (h === 0) h = 12;
+  const m = String(now.getMinutes()).padStart(2, '0');
+  return `${h}:${m}${ampm}`;
+}
+
+function addFeedLine(role, text) {
+  emptyState.style.display = 'none';
+  const div = document.createElement('div');
+  div.className = 'feedLine ' + (role === 'user' ? 'user' : role === 'sys' ? 'sys' : 'wanda');
+  const who = role === 'user' ? 'YOU' : role === 'sys' ? 'SYS' : 'WANDA';
+  div.innerHTML = `<span class="ts">${tsNow()}</span><span class="who">${who}:</span> <span class="body"></span>`;
+  div.querySelector('.body').textContent = ' ' + text;
+  transcript.appendChild(div);
+  transcript.scrollTop = transcript.scrollHeight;
+  return div.querySelector('.body');
+}
+// keep old name working for the rest of the script
+function addMessage(role, text) { return addFeedLine(role, text); }
+
+const GROQ_MODEL = "openai/gpt-oss-120b";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+// ---------- API key: never hardcoded, always from this device's localStorage ----------
+const KEY_STORAGE = 'wanda_groq_api_key';
+function getApiKey() {
+  try { return localStorage.getItem(KEY_STORAGE) || ''; } catch (e) { return ''; }
+}
+function setApiKey(key) {
+  try { localStorage.setItem(KEY_STORAGE, key.trim()); } catch (e) {}
+}
+function hasApiKey() { return !!getApiKey(); }
+
+const keyModalOverlay = document.getElementById('keyModalOverlay');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const settingsBtn = document.getElementById('settingsBtn');
+const saveKeyBtn = document.getElementById('saveKeyBtn');
+const cancelKeyBtn = document.getElementById('cancelKeyBtn');
+
+function openKeyModal() {
+  apiKeyInput.value = getApiKey();
+  keyModalOverlay.classList.add('open');
+  setTimeout(() => apiKeyInput.focus(), 50);
+}
+function closeKeyModal() { keyModalOverlay.classList.remove('open'); }
+
+settingsBtn.addEventListener('click', openKeyModal);
+cancelKeyBtn.addEventListener('click', closeKeyModal);
+keyModalOverlay.addEventListener('click', (e) => { if (e.target === keyModalOverlay) closeKeyModal(); });
+saveKeyBtn.addEventListener('click', () => {
+  const val = apiKeyInput.value.trim();
+  if (!val) { showHint('Key khaali chhod kar save nahi ho sakti.'); return; }
+  setApiKey(val);
+  closeKeyModal();
+  addFeedLine('sys', 'API key save ho gayi ✅');
+});
+
+// If no key is saved yet (fresh install / PWA), prompt for it right away.
+if (!hasApiKey()) {
+  addFeedLine('sys', 'Shuru karne ke liye apni free Groq API key daalo (⚙ KEY button) ⚙️');
+}
+
+// ---------- Live web search (Tavily) ----------
+const TAVILY_API_KEY = "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";
+function needsLiveSearch(text) {
+  return /\b(aaj|abhi|latest|news|khabar|current|score|match|live|rate today|today|is week|update|price of|kaun hai (pm|president|cm)|trending|share|stock|shares|nifty|sensex|market|ka bhav)\b/i.test(text);
+}
+async function tavilySearch(query) {
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify({
+        api_key: TAVILY_API_KEY,
+        query,
+        search_depth: 'basic',
+        max_results: 3,
+        include_answer: true
+      })
+    });
+    const data = await res.json();
+    if (data.answer) return data.answer;
+    if (data.results && data.results.length) {
+      return data.results.slice(0, 3).map(r => `${r.title}: ${r.content}`).join('\n');
+    }
+    return null;
+  } catch (e) { return null; }
+}
+
+// ---------- Live crypto prices (CoinGecko, no key needed) ----------
+const CRYPTO_MAP = {
+  bitcoin: 'bitcoin', btc: 'bitcoin', ethereum: 'ethereum', eth: 'ethereum',
+  dogecoin: 'dogecoin', doge: 'dogecoin', solana: 'solana', sol: 'solana',
+  cardano: 'cardano', ada: 'cardano', ripple: 'ripple', xrp: 'ripple',
+  litecoin: 'litecoin', ltc: 'litecoin', bnb: 'binancecoin', binance: 'binancecoin',
+  shiba: 'shiba-inu', pepe: 'pepe', matic: 'matic-network', polygon: 'matic-network'
+};
+async function cryptoPrice(coinId, label) {
+  try {
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd,inr&include_24hr_change=true`);
+    const data = await res.json();
+    const d = data[coinId];
+    if (!d) return null;
+    const change = d.usd_24h_change !== undefined ? d.usd_24h_change.toFixed(2) : '0';
+    const arrow = change >= 0 ? '📈' : '📉';
+    return `${label} abhi $${d.usd} (₹${d.inr}) par hai ${arrow} (24h: ${change}%)`;
+  } catch (e) { return null; }
+}
+
+async function callWanda(userText) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    openKeyModal();
+    return 'Pehle apni Groq API key daalo (⚙ KEY button se), phir baat karte hain 🙄';
+  }
+  history.push({ role: 'user', content: userText });
+  setStatus('thinking');
+  addFeedLine('sys', 'CORE holographic renderer processing...');
+  try {
+    let liveContext = '';
+    if (needsLiveSearch(userText)) {
+      addFeedLine('sys', 'Live web search chal rahi hai...');
+      const searchResult = await tavilySearch(userText);
+      if (searchResult) liveContext = `\n\n[LIVE WEB SEARCH RESULTS]:\n${searchResult}`;
+    }
+    const messages = [{ role: 'system', content: SYSTEM_PROMPT }];
+    history.forEach((h, i) => {
+      let content = h.content;
+      if (i === history.length - 1 && h.role === 'user' && liveContext) content += liveContext;
+      messages.push({ role: h.role === 'user' ? 'user' : 'assistant', content });
+    });
+
+    let lastErr = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(GROQ_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          signal: AbortSignal.timeout(15000),
+          body: JSON.stringify({
+            model: GROQ_MODEL,
+            messages,
+            max_tokens: 200,
+            temperature: 0.95
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.choices) {
+          const errMsg = data?.error?.message || `HTTP ${res.status}`;
+          if (res.status === 401) {
+            openKeyModal();
+            throw new Error('API key galat lag rahi hai, dobara check karo.');
+          }
+          if ((res.status === 429 || res.status >= 500) && attempt < 2) {
+            await new Promise(r => setTimeout(r, 800 * Math.pow(2, attempt)));
+            lastErr = new Error(errMsg);
+            continue;
+          }
+          throw new Error(errMsg);
+        }
+        const reply = data.choices[0].message.content;
+        history.push({ role: 'model', content: reply });
+        persistHistory();
+        return reply;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 2 && e.name !== 'AbortError') {
+          await new Promise(r => setTimeout(r, 800 * Math.pow(2, attempt)));
+          continue;
+        }
+        throw lastErr;
+      }
+    }
+    throw lastErr;
+  } catch (e) {
+    return `Kuch gadbad ho gayi: ${e.message || e}. Dobara try karo.`;
+  }
+}
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) { setStatus(''); return; }
+  window.speechSynthesis.cancel();
+  setStatus('speaking');
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'hi-IN';
+  utter.rate = 1.05;
+  utter.pitch = 1.3;
+  const voices = window.speechSynthesis.getVoices();
+  const hiVoice = voices.find(v => v.lang === 'hi-IN' && /female/i.test(v.name)) || voices.find(v => v.lang === 'hi-IN');
+  if (hiVoice) utter.voice = hiVoice;
+  utter.onend = () => setStatus('');
+  utter.onerror = () => setStatus('');
+  window.speechSynthesis.speak(utter);
+}
+
+async function handleUserText(said) {
+  if (!said || !said.trim() || isProcessing) return;
+  isProcessing = true;
+  addFeedLine('user', said);
+  setStatus('thinking');
+  try {
+    const quickReply = await processCommand(said);
+    const reply = quickReply !== null ? quickReply : await callWanda(said);
+    addFeedLine('wanda', reply);
+    speak(reply);
+  } finally {
+    isProcessing = false;
+  }
+}
+
+function handleSend() {
+  const val = textInput.value;
+  textInput.value = '';
+  handleUserText(val);
+}
+sendBtn.addEventListener('click', handleSend);
+textInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleSend(); });
+
+// ---------- Voice recognition ----------
+let recognition = null;
+let recognizing = false;
+let autoMode = false;       // continuous wake-word mode
+let autoRestarting = false; // internal auto-restart (not a manual tap)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function showHint(msg) { hint.textContent = msg; }
+if (SR) {
+  recognition = new SR();
+  recognition.lang = 'hi-IN';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => { recognizing = true; micBtn.classList.add('recording'); setStatus('listening'); showHint(autoMode ? 'Sun rahi hoon — "Wanda" bol kar baat karo.' : ''); };
+  recognition.onend = () => {
+    recognizing = false;
+    micBtn.classList.remove('recording');
+    if (!isProcessing) setStatus('');
+    if (autoMode && !isProcessing) {
+      setTimeout(() => { if (autoMode && !recognizing) { try { recognition.start(); } catch (e) {} } }, 400);
+    }
+  };
+  recognition.onerror = (event) => {
+    recognizing = false;
+    micBtn.classList.remove('recording');
+    setStatus('');
+    if (autoMode) return; // stay quiet in background mode, onend will restart it
+    const messages = {
+      'not-allowed': 'Mic permission nahi mili. Browser settings me allow karo.',
+      'network': 'Voice recognition ke liye internet chahiye.',
+      'no-speech': 'Kuch sunai nahi diya, dobara try karo.'
+    };
+    showHint(messages[event.error] || `Mic error: ${event.error}`);
+  };
+  recognition.onresult = (event) => {
+    const said = event.results[0][0].transcript;
+    if (autoMode) {
+      const low = said.toLowerCase();
+      if (!/\bwanda\b/.test(low)) return; // ignore background chatter, wait for wake word
+      const cleaned = said.replace(/wanda/gi, '').trim();
+      handleUserText(cleaned || said);
+    } else {
+      handleUserText(said);
+    }
+  };
+
+  micBtn.addEventListener('click', async () => {
+    if (recognizing) { recognition.stop(); return; }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    showHint('');
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());
+      } catch (e) {
+        showHint('Mic permission nahi mili. Browser settings me allow karo.');
+        return;
+      }
+    }
+    try { recognition.start(); }
+    catch (e) { showHint('Mic start nahi ho paaya, dobara try karo.'); }
+  });
+
+  autoModeBtn.addEventListener('click', async () => {
+    autoMode = !autoMode;
+    autoModeBtn.classList.toggle('active', autoMode);
+    if (autoMode) {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(t => t.stop());
+        } catch (e) {
+          showHint('Mic permission nahi mili. Browser settings me allow karo.');
+          autoMode = false;
+          autoModeBtn.classList.remove('active');
+          return;
+        }
+      }
+      showHint('Continuous mode ON — ab bas "Wanda" bol kar baat karo, mic dabane ki zaroorat nahi.');
+      if (!recognizing) { try { recognition.start(); } catch (e) {} }
+    } else {
+      showHint('Continuous mode OFF.');
+      if (recognizing) recognition.stop();
+    }
+  });
+} else {
+  micBtn.addEventListener('click', () => showHint('Is browser me voice input support nahi hai.'));
+  autoModeBtn.addEventListener('click', () => showHint('Is browser me voice input support nahi hai.'));
+}
+if ('speechSynthesis' in window) { window.speechSynthesis.getVoices(); }
+
+// ---------- PWA: register service worker (installable + works offline for the shell) ----------
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+// ---------- Particle sphere visualizer with HUD ticks + orbit ring ----------
+(function () {
+  const canvas = document.getElementById('coreCanvas');
+  const ctx = canvas.getContext('2d');
+  const _origArc = ctx.arc.bind(ctx);
+  ctx.arc = function (x, y, radius, start, end, ccw) {
+    const safeR = (isFinite(radius) && radius > 0) ? radius : 0.01;
+    return _origArc(x, y, safeR, start, end, ccw);
+  };
+  let DPR = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5));
+  let W = 0, H = 0, CX = 0, CY = 0;
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width || 300;
+    const h = rect.height || 300;
+    W = canvas.width = Math.max(1, Math.round(w * DPR));
+    H = canvas.height = Math.max(1, Math.round(h * DPR));
+    CX = W / 2; CY = H / 2;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  setTimeout(resize, 60);
+  setTimeout(resize, 300);
+
+  function r(v) { return v > 0 && isFinite(v) ? v : 0.01; }
+
+  // Dense Fibonacci core sphere - more particles, richer look
+  const N = 420;
+  const core = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N; i++) {
+    const y = 1 - (i / (N - 1)) * 2;
+    const rad = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = golden * i;
+    core.push({ x: Math.cos(theta) * rad, y: y, z: Math.sin(theta) * rad });
+  }
+
+  // Radiating light spikes bursting off the core
+  const NR = 26;
+  const spikes = [];
+  for (let i = 0; i < NR; i++) {
+    const u = Math.random() * 2 - 1;
+    const t = Math.random() * Math.PI * 2;
+    const rad = Math.sqrt(Math.max(0, 1 - u * u));
+    spikes.push({ x: Math.cos(t) * rad, y: u, z: Math.sin(t) * rad, len: 1.5 + Math.random() * 1.0 });
+  }
+
+  function makeRing(tiltX, tiltZ, count) {
+    const ring = [];
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      let x = Math.cos(a), y = 0, z = Math.sin(a);
+      const y1 = y * Math.cos(tiltX) - z * Math.sin(tiltX);
+      const z1 = y * Math.sin(tiltX) + z * Math.cos(tiltX);
+      const x2 = x * Math.cos(tiltZ) - y1 * Math.sin(tiltZ);
+      const y2 = x * Math.sin(tiltZ) + y1 * Math.cos(tiltZ);
+      ring.push({ x: x2, y: y2, z: z1 });
+    }
+    return ring;
+  }
+  // Two orbit rings at different tilts, like a gyroscope
+  const orbitRing = makeRing(1.15, 0.25, 160);
+  const orbitRing2 = makeRing(-0.55, 1.05, 120);
+
+  // Wireframe mesh sphere (meridians + parallels)
+  function meridianLine(angle, steps) {
+    const line = [];
+    for (let i = 0; i <= steps; i++) {
+      const lat = -Math.PI / 2 + (i / steps) * Math.PI;
+      const rad = Math.cos(lat);
+      line.push({ x: Math.cos(angle) * rad, y: Math.sin(lat), z: Math.sin(angle) * rad });
+    }
+    return line;
+  }
+  function parallelLine(lat, steps) {
+    const line = [];
+    const rad = Math.cos(lat);
+    for (let i = 0; i <= steps; i++) {
+      const a = (i / steps) * Math.PI * 2;
+      line.push({ x: Math.cos(a) * rad, y: Math.sin(lat), z: Math.sin(a) * rad });
+    }
+    return line;
+  }
+  const meridians = [];
+  for (let i = 0; i < 8; i++) meridians.push(meridianLine((i / 8) * Math.PI, 36));
+  const parallels = [];
+  for (let i = 1; i < 4; i++) parallels.push(parallelLine(-Math.PI / 2 + (i / 4) * Math.PI, 50));
+
+  // Comets travelling along the orbit ring
+  const comets = [
+    { ring: orbitRing, pos: 0, speed: 0.0045 },
+    { ring: orbitRing, pos: 0.5, speed: 0.0045 },
+    { ring: orbitRing2, pos: 0.3, speed: -0.006 }
+  ];
+
+  let rotY = 0;
+  const autoSpin = 0.0014;
+
+  function rotatePoint(p, rx, ry) {
+    let y1 = p.y * Math.cos(rx) - p.z * Math.sin(rx);
+    let z1 = p.y * Math.sin(rx) + p.z * Math.cos(rx);
+    let x2 = p.x * Math.cos(ry) + z1 * Math.sin(ry);
+    let z2 = -p.x * Math.sin(ry) + z1 * Math.cos(ry);
+    return { x: x2, y: y1, z: z2 };
+  }
+
+  function safeFrame(now) {
+    try { draw(now); } catch (e) { console.error('viz error', e); }
+    requestAnimationFrame(safeFrame);
+  }
+
+  function getCol() {
+    const cs = getComputedStyle(document.documentElement);
+    return {
+      r: parseFloat(cs.getPropertyValue('--core-r')) || 255,
+      g: parseFloat(cs.getPropertyValue('--core-g')) || 60,
+      b: parseFloat(cs.getPropertyValue('--core-b')) || 30
+    };
+  }
+
+  function draw(now) {
+    rotY += autoSpin;
+
+    const pulseAmt = vizState === 'speaking' ? 0.16 : vizState === 'listening' ? 0.12 : 0.07;
+    const pulseSpeed = vizState === 'thinking' ? 260 : vizState === 'speaking' ? 500 : 1000;
+    const scaleBase = Math.min(W, H) * 0.30;   // bigger core
+    const pulse = 1 + Math.sin(now / pulseSpeed) * pulseAmt;
+    const scale = Math.max(1, scaleBase * pulse);
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, W, H);
+
+    const col = getCol();
+
+    // Radiating dial ticks around the sphere (sundial / radar look)
+    const tickR1 = scale * 1.55, tickR2 = scale * 1.72;
+    const TICKS = 72;
+    for (let i = 0; i < TICKS; i++) {
+      const a = (i / TICKS) * Math.PI * 2;
+      const long = i % 6 === 0;
+      const rr1 = long ? tickR1 * 0.9 : tickR1;
+      const rr2 = tickR2 + (long ? scale * 0.07 : 0);
+      const x1 = CX + Math.cos(a) * rr1, y1 = CY + Math.sin(a) * rr1 * 0.55;
+      const x2 = CX + Math.cos(a) * rr2, y2 = CY + Math.sin(a) * rr2 * 0.55;
+      ctx.strokeStyle = `rgba(${col.r}, ${col.g + 40}, ${col.b}, ${long ? 0.4 : 0.16})`;
+      ctx.lineWidth = long ? 1.5 : 0.8;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+
+    ctx.globalCompositeOperation = 'lighter';
+
+    // central glow - bright hot core fading into theme color
+    const glowR = r(scale * 0.55);
+    const grad = ctx.createRadialGradient(CX, CY, 0, CX, CY, r(glowR * 2.6));
+    grad.addColorStop(0, `rgba(255, 252, 245, 1)`);
+    grad.addColorStop(0.2, `rgba(255, 210, 175, 0.85)`);
+    grad.addColorStop(0.5, `rgba(${col.r}, ${col.g}, ${col.b}, 0.4)`);
+    grad.addColorStop(1, `rgba(${col.r}, ${col.g}, ${col.b}, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(CX, CY, r(glowR * 2.6), 0, Math.PI * 2);
+    ctx.fill();
+
+    // radiating light spikes
+    ctx.lineWidth = Math.max(1.2, 1.8 * DPR);
+    for (const s of spikes) {
+      const rp = rotatePoint(s, 0.35, rotY);
+      const depth = (rp.z + 1) / 2;
+      const reach = scale * s.len;
+      const x = CX + rp.x * reach, y = CY + rp.y * reach;
+      const ix = CX + rp.x * scale * 0.25, iy = CY + rp.y * scale * 0.25;
+      const a = 0.1 + depth * 0.45;
+      const g2 = ctx.createLinearGradient(ix, iy, x, y);
+      g2.addColorStop(0, `rgba(255, 230, 200, ${a})`);
+      g2.addColorStop(0.4, `rgba(${col.r}, ${col.g}, ${col.b}, ${a * 0.5})`);
+      g2.addColorStop(1, `rgba(${col.r}, ${col.g}, ${col.b}, 0)`);
+      ctx.strokeStyle = g2;
+      ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(x, y); ctx.stroke();
+    }
+
+    // wireframe mesh sphere - meridians + parallels
+    function drawMeshLine(line) {
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i < line.length; i++) {
+        const rp = rotatePoint(line[i], 0.35, rotY);
+        const x = CX + rp.x * scale, y = CY + rp.y * scale;
+        if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.lineWidth = Math.max(0.8, 1 * DPR);
+    ctx.strokeStyle = `rgba(${Math.min(255, col.r + 50)}, ${Math.min(255, col.g + 50)}, ${col.b}, 0.28)`;
+    for (const m of meridians) drawMeshLine(m);
+    for (const p of parallels) drawMeshLine(p);
+
+    // core sphere particles - dense
+    for (const p of core) {
+      const rp = rotatePoint(p, 0.35, rotY);
+      const depth = (rp.z + 1) / 2;
+      const x = CX + rp.x * scale, y = CY + rp.y * scale;
+      const size = r((0.4 + depth * 1.8) * DPR);
+      const a = 0.18 + depth * 0.75;
+      ctx.fillStyle = `rgba(${Math.min(255, col.r + 45)}, ${Math.min(255, col.g + 45)}, ${col.b}, ${a})`;
+      ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // two tilted elliptical orbit rings
+    function drawOrbit(ring, mult, alpha) {
+      ctx.beginPath();
+      for (let i = 0; i < ring.length; i++) {
+        const rp = rotatePoint(ring[i], 0, rotY);
+        const x = CX + rp.x * scale * mult, y = CY + rp.y * scale * mult;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = `rgba(${Math.min(255,col.r+30)}, ${Math.min(255,col.g+20)}, ${Math.min(255,col.b+60)}, ${alpha})`;
+      ctx.lineWidth = Math.max(1, 1.4 * DPR);
+      ctx.stroke();
+    }
+    drawOrbit(orbitRing, 1.5, 0.55);
+    drawOrbit(orbitRing2, 1.32, 0.32);
+
+    // comets running along the rings
+    for (const c of comets) {
+      c.pos = (c.pos + c.speed + 1) % 1;
+      const idx = Math.floor(c.pos * c.ring.length);
+      const pt = c.ring[idx];
+      const rp = rotatePoint(pt, 0, rotY);
+      const depth = (rp.z + 1) / 2;
+      const mult = c.ring === orbitRing ? 1.5 : 1.32;
+      const x = CX + rp.x * scale * mult, y = CY + rp.y * scale * mult;
+      const glowSize = r((2.2 + depth * 3) * DPR);
+      const cg = ctx.createRadialGradient(x, y, 0, x, y, glowSize * 3);
+      cg.addColorStop(0, `rgba(255, 245, 225, ${0.55 + depth * 0.4})`);
+      cg.addColorStop(0.4, `rgba(${col.r}, ${col.g + 40}, ${col.b}, ${0.3 + depth * 0.3})`);
+      cg.addColorStop(1, `rgba(${col.r}, ${col.g}, ${col.b}, 0)`);
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.arc(x, y, r(glowSize * 3), 0, Math.PI * 2); ctx.fill();
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  requestAnimationFrame(safeFrame);
+
+  window.vizReboot = function () {
+    rotY = 0;
+    canvas.style.opacity = 0.2;
+    setTimeout(() => { canvas.style.transition = 'opacity 0.6s'; canvas.style.opacity = 1; }, 30);
+  };
+})();
+</script>
+
+</body>
+</html>
